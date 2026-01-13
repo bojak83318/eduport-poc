@@ -24,7 +24,10 @@ export async function POST(request: Request) {
         const match = html.match(regex);
 
         if (!match) {
-            return NextResponse.json({ error: "Could not find activityModel in HTML" }, { status: 400 });
+            return NextResponse.json({
+                error: "POC Limitation: This game format is not supported. The current version only supports older Wordwall templates that use the legacy 'activityModel' structure. Newer games use dynamic content loading which requires additional API integration.",
+                details: "Try searching for 'Match up' or 'Quiz' templates from 2022 or earlier."
+            }, { status: 400 });
         }
 
         const activityModel = JSON.parse(match[1]);
