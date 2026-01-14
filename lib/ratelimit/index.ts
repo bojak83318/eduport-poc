@@ -2,56 +2,65 @@ import { Ratelimit } from "@upstash/ratelimit"
 import { Redis } from "@upstash/redis"
 import { createClient } from '@/lib/supabase/server'
 
-const redis = new Redis({
-    url: process.env.UPSTASH_REDIS_REST_URL!,
-    token: process.env.UPSTASH_REDIS_REST_TOKEN!,
-})
+// Gracefully handle missing Redis configuration
+const getRedis = (): Redis | null => {
+    const url = process.env.UPSTASH_REDIS_REST_URL;
+    const token = process.env.UPSTASH_REDIS_REST_TOKEN;
+
+    if (!url || !token) {
+        console.warn('[RateLimit] UPSTASH_REDIS_REST_URL or TOKEN not configured - rate limiting disabled');
+        return null;
+    }
+
+    try {
+        return new Redis({ url, token });
+    } catch (error) {
+        console.error('[RateLimit] Failed to initialize Redis:', error);
+        return null;
+    }
+};
+
+const redis = getRedis();
+
+// Create limiters only if Redis is available
+const createLimiter = (options: { prefix: string; window: number; requests: number }) => {
+    if (!redis) return null;
+    return new Ratelimit({
+        redis,
+        limiter: Ratelimit.slidingWindow(options.requests, `${options.window} s`),
+        analytics: true,
+        prefix: options.prefix,
+    });
+};
 
 // Anonymous rate limiter (by IP)
-export const anonymousLimiter = new Ratelimit({
-    redis,
-    limiter: Ratelimit.slidingWindow(10, "1 m"),
-    analytics: true,
-    prefix: "@eduport/anon",
-})
+export const anonymousLimiter = createLimiter({ prefix: "@eduport/anon", window: 60, requests: 10 });
 
 // Pro rate limiter (by user ID)
-export const proLimiter = new Ratelimit({
-    redis,
-    limiter: Ratelimit.slidingWindow(10, "1 s"),
-    analytics: true,
-    prefix: "@eduport/pro",
-})
+export const proLimiter = createLimiter({ prefix: "@eduport/pro", window: 1, requests: 10 });
 
 // Enterprise rate limiter
-export const enterpriseLimiter = new Ratelimit({
-    redis,
-    limiter: Ratelimit.slidingWindow(100, "1 s"),
-    analytics: true,
-    prefix: "@eduport/enterprise",
-})
+export const enterpriseLimiter = createLimiter({ prefix: "@eduport/enterprise", window: 1, requests: 100 });
 
 export async function checkRateLimit(identifier: string, tier: 'anon' | 'free' | 'pro' | 'enterprise') {
-    // Map 'free' tier to 'anon' limiter for now, or maybe it should have its own?
-    // The table in the task says:
-    // Anonymous: 10/min (IP)
-    // Free: 5 conversions/month. But doesn't specify a rate limit per second/minute?
-    // It implies Free users are authenticated. They should probably fall under a stricter rate limit than pro but maybe similar to anon for frequency?
-    // Task says: "Tier-based rate limiting".
-    // The code snippet maps:
-    // const limiter = tier === 'enterprise' ? enterpriseLimiter : tier === 'pro' ? proLimiter : anonymousLimiter
-    // If tier is 'free', it falls to anonymousLimiter?
-
-    // Let's refine the logic based on provided code in prompt step 2:
-    // const limiter = tier === 'enterprise' ? enterpriseLimiter 
-    //              : tier === 'pro' ? proLimiter 
-    //              : anonymousLimiter
-
-    // Wait, if tier is 'free', it uses anonymousLimiter (10/min). This seems acceptable.
-
     const limiter = tier === 'enterprise' ? enterpriseLimiter
         : tier === 'pro' ? proLimiter
-            : anonymousLimiter
+            : anonymousLimiter;
+
+    // If Redis is not configured, allow all requests (bypass rate limiting)
+    if (!limiter) {
+        return {
+            success: true,
+            limit: 0,
+            remaining: 0,
+            reset: 0,
+            headers: {
+                'X-RateLimit-Limit': 'unlimited',
+                'X-RateLimit-Remaining': 'unlimited',
+                'X-RateLimit-Reset': '0',
+            }
+        };
+    }
 
     const { success, limit, remaining, reset } = await limiter.limit(identifier)
 
