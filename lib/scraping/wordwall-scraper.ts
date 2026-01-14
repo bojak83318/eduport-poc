@@ -13,10 +13,20 @@ const logger = pino({
 
 export class WordwallScraper {
     private httpClient = createHttpClient();
-    private supabase = createClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.SUPABASE_SERVICE_ROLE_KEY!
-    );
+    private supabase;
+
+    constructor() {
+        if (!process.env.NEXT_PUBLIC_SUPABASE_URL) {
+            throw new Error('NEXT_PUBLIC_SUPABASE_URL is not defined');
+        }
+        if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+            throw new Error('SUPABASE_SERVICE_ROLE_KEY is not defined');
+        }
+        this.supabase = createClient(
+            process.env.NEXT_PUBLIC_SUPABASE_URL,
+            process.env.SUPABASE_SERVICE_ROLE_KEY
+        );
+    }
 
     async scrape(url: string): Promise<ActivityPayload> {
         const startTime = Date.now();
