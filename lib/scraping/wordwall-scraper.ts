@@ -84,7 +84,7 @@ export class WordwallScraper {
             throw new Error('Activity GUID is missing');
         }
 
-        const zipUrl = `https://user.cdn.wordwall.net/documents/${guid}`;
+        const zipUrl = `https://user.cdn.wordwall.net/documents/${encodeURIComponent(guid)}`;
         logger.info({ zipUrl, guid }, 'Fetching Activity Package ZIP');
 
         try {

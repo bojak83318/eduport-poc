@@ -1,4 +1,3 @@
-import pRetry from 'p-retry';
 import { ExtractionError } from '../types';
 
 const USER_AGENT =
@@ -16,53 +15,59 @@ export function createHttpClient(options: HttpClientOptions = {}) {
         timeout = 10000,
         retries = 3,
         minTimeout = 1000,
-        maxTimeout = 5000,
+        // maxTimeout not strictly used in simple backoff but kept for interface compatibility
     } = options;
 
     return {
         async get(url: string): Promise<string> {
-            return pRetry(
-                async () => {
-                    const controller = new AbortController();
-                    const timeoutId = setTimeout(() => controller.abort(), timeout);
+            let lastError: any;
 
-                    try {
-                        const response = await fetch(url, {
-                            headers: {
-                                'User-Agent': USER_AGENT,
-                                Accept: 'text/html,application/xhtml+xml',
-                                'Accept-Language': 'en-US,en;q=0.9',
-                                'Cache-Control': 'no-cache',
-                            },
-                            signal: controller.signal,
-                        });
+            for (let attempt = 1; attempt <= retries + 1; attempt++) {
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), timeout);
 
-                        clearTimeout(timeoutId);
+                try {
+                    const response = await fetch(url, {
+                        headers: {
+                            'User-Agent': USER_AGENT,
+                            Accept: 'text/html,application/xhtml+xml',
+                            'Accept-Language': 'en-US,en;q=0.9',
+                            'Cache-Control': 'no-cache',
+                        },
+                        signal: controller.signal,
+                    });
 
-                        if (!response.ok) {
-                            throw new ExtractionError(
-                                `HTTP ${response.status}: ${response.statusText}`
-                            );
-                        }
+                    clearTimeout(timeoutId);
 
-                        return response.text();
-                    } catch (err) {
-                        clearTimeout(timeoutId);
+                    if (!response.ok) {
+                        throw new ExtractionError(
+                            `HTTP ${response.status}: ${response.statusText}`
+                        );
+                    }
+
+                    return await response.text();
+                } catch (err: any) {
+                    clearTimeout(timeoutId);
+                    lastError = err;
+
+                    // Don't retry on 4xx errors (except maybe 429, but let's keep it simple)
+                    if (err instanceof ExtractionError && err.message.startsWith('HTTP 4')) {
                         throw err;
                     }
-                },
-                {
-                    retries,
-                    minTimeout,
-                    maxTimeout,
-                    onFailedAttempt: (error) => {
-                        console.warn(
-                            `Attempt ${error.attemptNumber} failed. ${error.retriesLeft} retries left.`
-                        );
-                        console.warn(`Error: ${error.message}`);
-                    },
+
+                    // If we have retries left, wait and retry
+                    if (attempt <= retries) {
+                        // Exponential backoff or simple linear? Plan said simple wait. 
+                        // Let's do a simple exponential backoff: minTimeout * 2^(attempt-1)
+                        const delay = minTimeout * Math.pow(2, attempt - 1);
+                        console.warn(`Attempt ${attempt} failed: ${err.message}. Retrying in ${delay}ms...`);
+                        await new Promise((resolve) => setTimeout(resolve, delay));
+                        continue;
+                    }
                 }
-            );
+            }
+
+            throw lastError || new Error(`Failed to fetch ${url} after ${retries + 1} attempts`);
         },
     };
 }

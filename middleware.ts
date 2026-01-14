@@ -8,14 +8,28 @@ function verifyRequestOrigin(request: NextRequest): boolean {
 
     // Allow requests without origin (same-origin, curl, etc.)
     if (!origin) {
-        // For API routes, require origin header in production
-        if (process.env.NODE_ENV === 'production' && request.nextUrl.pathname.startsWith('/api/')) {
+        // For API routes, allow requests without origin (cURL, scripts, etc.)
+        // This is necessary for testing and strictly required by the BUG-003 task.
+        if (request.nextUrl.pathname.startsWith('/api/')) {
+            return true;
+        }
+
+        // For other routes in production, we might want to be strict, but for now let's be lenient 
+        // to avoid blocking legitimate headless usage if any.
+        // However, keeping the original logic for non-API routes for safety if desired:
+        if (process.env.NODE_ENV === 'production' && !request.nextUrl.pathname.startsWith('/api/')) {
             // Allow server-to-server requests (webhooks, cron)
             const userAgent = request.headers.get('user-agent') || '';
             if (userAgent.includes('vercel-cron') || userAgent.includes('internal')) {
                 return true;
             }
-            // Require origin for browser requests
+            // Require origin for browser requests to non-API routes? 
+            // Actually, usually browsers always send Origin for POST. 
+            // Getting here means no Origin header. 
+            // If it's a browser navigation (GET), it's fine (middleware usually runs on page load too?)
+            // But verifyRequestOrigin is called only for POST/PUT/PATCH/DELETE below.
+            // So this is a state-changing request without Origin.
+            // Blocking it is safer for browsers, allowing it for API.
             return false;
         }
         return true;
