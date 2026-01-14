@@ -6,6 +6,9 @@ import pino from 'pino';
 import { checkRateLimit, checkMonthlyQuota } from '@/lib/ratelimit';
 import { createClient } from '@/lib/supabase/server';
 
+// Force Node.js runtime for this endpoint to support adm-zip and Buffer operations
+export const runtime = 'nodejs';
+
 const logger = pino({ name: 'convert-api' });
 
 export async function POST(req: NextRequest) {

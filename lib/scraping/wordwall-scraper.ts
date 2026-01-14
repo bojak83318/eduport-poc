@@ -23,6 +23,7 @@ export class WordwallScraper {
 
         // 1. Extract activity ID from URL
         const activityId = this.extractActivityId(url);
+        // Add request correlation ID or simply ensure logger has context
         logger.info({ activityId, url }, 'Starting scrape');
 
         // 2. Check cache first (24h TTL)
@@ -79,7 +80,12 @@ export class WordwallScraper {
     }
 
     private async fetchActivityPackage(guid: string, model: any): Promise<ActivityPayload> {
+        if (!guid) {
+            throw new Error('Activity GUID is missing');
+        }
+
         const zipUrl = `https://user.cdn.wordwall.net/documents/${guid}`;
+        logger.info({ zipUrl, guid }, 'Fetching Activity Package ZIP');
 
         try {
             // Fetch ZIP file as buffer
