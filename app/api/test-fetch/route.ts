@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 
 // Force Node.js runtime
 export const runtime = 'nodejs';
+// Build timestamp: 2026-01-14 T15:15
+
 
 export async function GET(req: NextRequest) {
     const testUrl = new URL(req.url).searchParams.get('url') || 'https://wordwall.net/resource/101727466/esa/have-got-has-got-affirmative-negative';
