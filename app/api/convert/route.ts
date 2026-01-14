@@ -17,8 +17,11 @@ export async function POST(req: NextRequest) {
 
     try {
         // 0. Rate Limiting & Quota Check
+        console.log('[CONVERT] Step 0: Creating Supabase client...');
         const supabase = await createClient();
+        console.log('[CONVERT] Step 0: Supabase client created');
         const { data: { user } } = await supabase.auth.getUser();
+        console.log('[CONVERT] Step 0: Got user:', user?.id || 'anonymous');
         supabaseUser = user;
 
         const ip = req.headers.get('x-forwarded-for') || 'unknown';
@@ -28,7 +31,9 @@ export async function POST(req: NextRequest) {
         const tier = (user?.app_metadata?.tier || user?.user_metadata?.tier || (user ? 'free' : 'anon')) as 'anon' | 'free' | 'pro' | 'enterprise';
 
         // 1. Check Rate Limit (Frequency)
+        console.log('[CONVERT] Step 1: Checking rate limit for:', identifier, 'tier:', tier);
         const rateLimit = await checkRateLimit(identifier, tier);
+        console.log('[CONVERT] Step 1: Rate limit result:', rateLimit.success);
 
         if (!rateLimit.success) {
             return NextResponse.json(
@@ -60,9 +65,12 @@ export async function POST(req: NextRequest) {
         }
 
         // 4. Scrape Wordwall activity
+        console.log('[CONVERT] Step 4: Starting scraper for:', wordwallUrl);
         logger.info({ wordwallUrl, userId: user?.id || userId || 'anon' }, 'Starting conversion');
         const scraper = new WordwallScraper();
+        console.log('[CONVERT] Step 4: Scraper created, calling scrape()...');
         const activity = await scraper.scrape(wordwallUrl);
+        console.log('[CONVERT] Step 4: Scrape complete, items:', activity.content.items?.length);
 
         // 5. Transform to H5P
         const adapter = getAdapter(activity.template);
@@ -117,8 +125,13 @@ export async function POST(req: NextRequest) {
     } catch (error) {
         const latencyMs = Date.now() - startTime;
         const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        const errorStack = error instanceof Error ? error.stack : undefined;
+        const errorCause = error instanceof Error && 'cause' in error ? (error as any).cause : undefined;
 
-        logger.error({ error: errorMessage, latencyMs }, 'Conversion failed');
+        console.error('[CONVERT] ERROR:', errorMessage);
+        console.error('[CONVERT] STACK:', errorStack);
+        console.error('[CONVERT] CAUSE:', errorCause);
+        logger.error({ error: errorMessage, stack: errorStack, cause: errorCause, latencyMs }, 'Conversion failed');
 
         const statusCode = errorMessage.includes('Unsupported template') ? 422 : 500;
 
@@ -126,6 +139,11 @@ export async function POST(req: NextRequest) {
             {
                 error: errorMessage,
                 latencyMs,
+                // Include stack trace for debugging
+                debug: {
+                    stack: errorStack?.split('\n').slice(0, 5),
+                    cause: errorCause ? String(errorCause) : undefined,
+                }
             },
             { status: statusCode }
         );

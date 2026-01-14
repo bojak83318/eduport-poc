@@ -60,33 +60,39 @@ export class H5PPackager {
                 'Package created'
             );
 
-            // 5. Upload to Supabase Storage
-            const fileName = `${userId || 'anonymous'}/${activityId}-${Date.now()}.h5p`;
-            const { data: uploadData, error } = await this.supabase.storage
-                .from('h5p-packages')
-                .upload(fileName, buffer, {
-                    contentType: 'application/h5p',
-                    cacheControl: '3600',
-                    upsert: true,
-                });
+            // 5. Upload to Supabase Storage (optional - API returns buffer directly)
+            let packageUrl = '';
+            try {
+                const fileName = `${userId || 'anonymous'}/${activityId}-${Date.now()}.h5p`;
+                const { data: uploadData, error } = await this.supabase.storage
+                    .from('h5p-packages')
+                    .upload(fileName, buffer, {
+                        contentType: 'application/h5p',
+                        cacheControl: '3600',
+                        upsert: true,
+                    });
 
-            if (error) {
-                throw new PackagingError(`Storage upload failed: ${error.message}`);
+                if (error) {
+                    // Log but don't fail - storage is optional since API returns buffer directly
+                    logger.warn({ error: error.message }, 'Storage upload failed (optional, continuing)');
+                } else {
+                    // 6. Get public URL (24h signed URL)
+                    const { data: urlData } = await this.supabase.storage
+                        .from('h5p-packages')
+                        .createSignedUrl(fileName, 86400); // 24 hours
+
+                    if (urlData?.signedUrl) {
+                        packageUrl = urlData.signedUrl;
+                        logger.info({ activityId, packageUrl }, 'Package uploaded to storage');
+                    }
+                }
+            } catch (uploadError) {
+                // Storage upload is optional - API returns buffer directly
+                logger.warn({ error: (uploadError as Error).message }, 'Storage upload failed (optional)');
             }
-
-            // 6. Get public URL (24h signed URL)
-            const { data: urlData } = await this.supabase.storage
-                .from('h5p-packages')
-                .createSignedUrl(fileName, 86400); // 24 hours
-
-            if (!urlData?.signedUrl) {
-                throw new PackagingError('Failed to generate download URL');
-            }
-
-            logger.info({ activityId, packageUrl: urlData.signedUrl }, 'Package uploaded');
 
             return {
-                packageUrl: urlData.signedUrl,
+                packageUrl,
                 buffer,
             };
         } catch (error) {

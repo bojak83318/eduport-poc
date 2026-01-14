@@ -12,7 +12,7 @@ export interface HttpClientOptions {
 
 export function createHttpClient(options: HttpClientOptions = {}) {
     const {
-        timeout = 10000,
+        timeout = 30000, // Extended from 10s to 30s to rule out timeout issues
         retries = 3,
         minTimeout = 1000,
         // maxTimeout not strictly used in simple backoff but kept for interface compatibility
@@ -26,6 +26,7 @@ export function createHttpClient(options: HttpClientOptions = {}) {
                 const controller = new AbortController();
                 const timeoutId = setTimeout(() => controller.abort(), timeout);
 
+                console.log(`[HTTP-CLIENT] Attempt ${attempt} for URL: ${url.substring(0, 100)}...`);
                 try {
                     const response = await fetch(url, {
                         headers: {
@@ -38,6 +39,7 @@ export function createHttpClient(options: HttpClientOptions = {}) {
                     });
 
                     clearTimeout(timeoutId);
+                    console.log(`[HTTP-CLIENT] Attempt ${attempt} response: ${response.status}`);
 
                     if (!response.ok) {
                         throw new ExtractionError(
@@ -49,6 +51,8 @@ export function createHttpClient(options: HttpClientOptions = {}) {
                 } catch (err: any) {
                     clearTimeout(timeoutId);
                     lastError = err;
+                    const cause = err.cause ? ` Cause: ${JSON.stringify(err.cause)}` : '';
+                    console.error(`[HTTP-CLIENT] Attempt ${attempt} FAILED: ${err.message}${cause}`);
 
                     // Don't retry on 4xx errors (except maybe 429, but let's keep it simple)
                     if (err instanceof ExtractionError && err.message.startsWith('HTTP 4')) {
@@ -57,10 +61,9 @@ export function createHttpClient(options: HttpClientOptions = {}) {
 
                     // If we have retries left, wait and retry
                     if (attempt <= retries) {
-                        // Exponential backoff or simple linear? Plan said simple wait. 
-                        // Let's do a simple exponential backoff: minTimeout * 2^(attempt-1)
+                        // Exponential backoff
                         const delay = minTimeout * Math.pow(2, attempt - 1);
-                        console.warn(`Attempt ${attempt} failed: ${err.message}. Retrying in ${delay}ms...`);
+                        console.warn(`[HTTP-CLIENT] Retrying in ${delay}ms...`);
                         await new Promise((resolve) => setTimeout(resolve, delay));
                         continue;
                     }

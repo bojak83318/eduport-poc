@@ -88,13 +88,20 @@ export class WordwallScraper {
         logger.info({ zipUrl, guid }, 'Fetching Activity Package ZIP');
 
         try {
-            // Fetch ZIP file as buffer
-            const response = await fetch(zipUrl);
+            // Fetch ZIP file as buffer with proper headers (required for serverless env)
+            const response = await fetch(zipUrl, {
+                headers: {
+                    'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                    'Accept': '*/*',
+                    'Accept-Language': 'en-US,en;q=0.9',
+                },
+            });
             if (!response.ok) {
                 throw new Error(`CDN returned ${response.status}`);
             }
             const arrayBuffer = await response.arrayBuffer();
             const buffer = Buffer.from(arrayBuffer);
+
 
             // Parse ZIP
             const zip = new AdmZip(buffer);
@@ -162,8 +169,10 @@ export class WordwallScraper {
             };
 
         } catch (error) {
-            logger.error({ guid, error }, 'Failed to fetch/parse activity package');
-            throw error;
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            const errorCause = error instanceof Error && 'cause' in error ? (error as any).cause : undefined;
+            logger.error({ guid, error: errorMessage, cause: errorCause }, 'Failed to fetch/parse activity package');
+            throw new Error(`Failed to fetch activity package: ${errorMessage}${errorCause ? ` (cause: ${errorCause})` : ''}`);
         }
     }
 

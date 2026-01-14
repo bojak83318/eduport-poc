@@ -2,13 +2,27 @@ import { Ratelimit } from "@upstash/ratelimit"
 import { Redis } from "@upstash/redis"
 import { createClient } from '@/lib/supabase/server'
 
-// Gracefully handle missing Redis configuration
+// Gracefully handle missing or placeholder Redis configuration
 const getRedis = (): Redis | null => {
     const url = process.env.UPSTASH_REDIS_REST_URL;
     const token = process.env.UPSTASH_REDIS_REST_TOKEN;
 
+    // Check for missing values
     if (!url || !token) {
         console.warn('[RateLimit] UPSTASH_REDIS_REST_URL or TOKEN not configured - rate limiting disabled');
+        return null;
+    }
+
+    // Check for placeholder values (xxx, YOUR_URL, placeholder, etc.)
+    const isPlaceholder = (val: string) =>
+        /^https?:\/\/(xxx|your|placeholder|example|localhost)[\.\-]/i.test(val) ||
+        val.includes('xxx') ||
+        val.includes('your_') ||
+        val.includes('YOUR_') ||
+        val === 'xxx';
+
+    if (isPlaceholder(url) || isPlaceholder(token)) {
+        console.warn('[RateLimit] UPSTASH_REDIS contains placeholder values - rate limiting disabled');
         return null;
     }
 
