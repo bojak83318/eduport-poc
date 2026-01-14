@@ -1,0 +1,304 @@
+{
+    "corpus": [
+        {
+            "id": "matchup-01",
+            "url": "https://wordwall.net/resource/1234/matchup-capitals",
+            "template": "MatchUp",
+            "description": "Country capitals matching"
+        },
+        {
+            "id": "matchup-02",
+            "url": "https://wordwall.net/resource/5678/matchup-animals",
+            "template": "MatchUp",
+            "description": "Animal habitats"
+        },
+        {
+            "id": "matchup-03",
+            "url": "https://wordwall.net/resource/9012/matchup-colors",
+            "template": "Match",
+            "description": "Color translations"
+        },
+        {
+            "id": "matchup-04",
+            "url": "https://wordwall.net/resource/3456/pairs-fruits",
+            "template": "Pairs",
+            "description": "Fruit matching"
+        },
+        {
+            "id": "matchup-05",
+            "url": "https://wordwall.net/resource/7890/matchup-shapes",
+            "template": "MatchUp",
+            "description": "Geometric shapes"
+        },
+        {
+            "id": "matchup-06",
+            "url": "https://wordwall.net/resource/2345/matchup-vocab",
+            "template": "MatchUp",
+            "description": "Vocabulary definitions"
+        },
+        {
+            "id": "matchup-07",
+            "url": "https://wordwall.net/resource/6789/matchup-math",
+            "template": "Match",
+            "description": "Math operations"
+        },
+        {
+            "id": "matchup-08",
+            "url": "https://wordwall.net/resource/1357/matchup-history",
+            "template": "MatchUp",
+            "description": "Historical dates"
+        },
+        {
+            "id": "matchup-09",
+            "url": "https://wordwall.net/resource/2468/pairs-science",
+            "template": "Pairs",
+            "description": "Scientific terms"
+        },
+        {
+            "id": "matchup-10",
+            "url": "https://wordwall.net/resource/1111/matchup-music",
+            "template": "MatchUp",
+            "description": "Musical instruments"
+        },
+        {
+            "id": "quiz-01",
+            "url": "https://wordwall.net/resource/3333/quiz-geography",
+            "template": "Quiz",
+            "description": "Geography trivia"
+        },
+        {
+            "id": "quiz-02",
+            "url": "https://wordwall.net/resource/4444/quiz-science",
+            "template": "MultipleChoice",
+            "description": "Science questions"
+        },
+        {
+            "id": "quiz-03",
+            "url": "https://wordwall.net/resource/5555/quiz-history",
+            "template": "Quiz",
+            "description": "World history"
+        },
+        {
+            "id": "quiz-04",
+            "url": "https://wordwall.net/resource/6666/truefalse-animals",
+            "template": "TrueFalse",
+            "description": "Animal facts"
+        },
+        {
+            "id": "quiz-05",
+            "url": "https://wordwall.net/resource/7777/quiz-math",
+            "template": "Quiz",
+            "description": "Math problems"
+        },
+        {
+            "id": "quiz-06",
+            "url": "https://wordwall.net/resource/8888/quiz-literature",
+            "template": "MultipleChoice",
+            "description": "Literature quiz"
+        },
+        {
+            "id": "quiz-07",
+            "url": "https://wordwall.net/resource/9999/quiz-art",
+            "template": "Quiz",
+            "description": "Art history"
+        },
+        {
+            "id": "quiz-08",
+            "url": "https://wordwall.net/resource/1212/truefalse-facts",
+            "template": "TrueFalse",
+            "description": "General facts"
+        },
+        {
+            "id": "quiz-09",
+            "url": "https://wordwall.net/resource/3434/quiz-sports",
+            "template": "Quiz",
+            "description": "Sports trivia"
+        },
+        {
+            "id": "quiz-10",
+            "url": "https://wordwall.net/resource/5656/quiz-technology",
+            "template": "MultipleChoice",
+            "description": "Tech knowledge"
+        },
+        {
+            "id": "flashcard-01",
+            "url": "https://wordwall.net/resource/7878/flashcard-vocab",
+            "template": "Flashcard",
+            "description": "Vocabulary flashcards"
+        },
+        {
+            "id": "flashcard-02",
+            "url": "https://wordwall.net/resource/9090/cards-spanish",
+            "template": "Flashcards",
+            "description": "Spanish words"
+        },
+        {
+            "id": "flashcard-03",
+            "url": "https://wordwall.net/resource/1313/flashcard-math",
+            "template": "Flashcard",
+            "description": "Math formulas"
+        },
+        {
+            "id": "flashcard-04",
+            "url": "https://wordwall.net/resource/2424/cards-biology",
+            "template": "Cards",
+            "description": "Biology terms"
+        },
+        {
+            "id": "flashcard-05",
+            "url": "https://wordwall.net/resource/3535/flashcard-history",
+            "template": "Flashcard",
+            "description": "Historical events"
+        },
+        {
+            "id": "flashcard-06",
+            "url": "https://wordwall.net/resource/4646/flashcard-chemistry",
+            "template": "Flashcards",
+            "description": "Chemistry elements"
+        },
+        {
+            "id": "flashcard-07",
+            "url": "https://wordwall.net/resource/5757/cards-geography",
+            "template": "Cards",
+            "description": "Countries and capitals"
+        },
+        {
+            "id": "flashcard-08",
+            "url": "https://wordwall.net/resource/6868/flashcard-physics",
+            "template": "Flashcard",
+            "description": "Physics concepts"
+        },
+        {
+            "id": "flashcard-09",
+            "url": "https://wordwall.net/resource/7979/flashcard-french",
+            "template": "Flashcards",
+            "description": "French vocabulary"
+        },
+        {
+            "id": "flashcard-10",
+            "url": "https://wordwall.net/resource/8080/cards-music",
+            "template": "Cards",
+            "description": "Musical notation"
+        },
+        {
+            "id": "groupsort-01",
+            "url": "https://wordwall.net/resource/9191/groupsort-animals",
+            "template": "GroupSort",
+            "description": "Animal classification"
+        },
+        {
+            "id": "groupsort-02",
+            "url": "https://wordwall.net/resource/1122/groupsort-food",
+            "template": "GroupSort",
+            "description": "Food groups"
+        },
+        {
+            "id": "groupsort-03",
+            "url": "https://wordwall.net/resource/2233/rankorder-events",
+            "template": "RankOrder",
+            "description": "Historical events"
+        },
+        {
+            "id": "groupsort-04",
+            "url": "https://wordwall.net/resource/3344/groupsort-shapes",
+            "template": "GroupSort",
+            "description": "Geometric shapes"
+        },
+        {
+            "id": "groupsort-05",
+            "url": "https://wordwall.net/resource/4455/groupsort-weather",
+            "template": "GroupSort",
+            "description": "Weather types"
+        },
+        {
+            "id": "groupsort-06",
+            "url": "https://wordwall.net/resource/5566/unjumble-sentence",
+            "template": "Unjumble",
+            "description": "Sentence ordering"
+        },
+        {
+            "id": "groupsort-07",
+            "url": "https://wordwall.net/resource/6677/groupsort-transport",
+            "template": "GroupSort",
+            "description": "Transportation modes"
+        },
+        {
+            "id": "groupsort-08",
+            "url": "https://wordwall.net/resource/7788/rankorder-size",
+            "template": "RankOrder",
+            "description": "Size ordering"
+        },
+        {
+            "id": "groupsort-09",
+            "url": "https://wordwall.net/resource/8899/groupsort-plants",
+            "template": "GroupSort",
+            "description": "Plant types"
+        },
+        {
+            "id": "groupsort-10",
+            "url": "https://wordwall.net/resource/9900/groupsort-colors",
+            "template": "GroupSort",
+            "description": "Color categories"
+        },
+        {
+            "id": "mixed-01",
+            "url": "https://wordwall.net/resource/1010/missingword-grammar",
+            "template": "MissingWord",
+            "description": "Grammar fill-in"
+        },
+        {
+            "id": "mixed-02",
+            "url": "https://wordwall.net/resource/2020/crossword-vocab",
+            "template": "Crossword",
+            "description": "Vocabulary crossword"
+        },
+        {
+            "id": "mixed-03",
+            "url": "https://wordwall.net/resource/3030/cloze-reading",
+            "template": "Cloze",
+            "description": "Reading comprehension"
+        },
+        {
+            "id": "mixed-04",
+            "url": "https://wordwall.net/resource/4040/missingword-science",
+            "template": "MissingWord",
+            "description": "Science terms"
+        },
+        {
+            "id": "mixed-05",
+            "url": "https://wordwall.net/resource/5050/crossword-history",
+            "template": "Crossword",
+            "description": "History crossword"
+        },
+        {
+            "id": "mixed-06",
+            "url": "https://wordwall.net/resource/6060/missingword-math",
+            "template": "MissingWord",
+            "description": "Math sentences"
+        },
+        {
+            "id": "mixed-07",
+            "url": "https://wordwall.net/resource/7070/cloze-story",
+            "template": "Cloze",
+            "description": "Story completion"
+        },
+        {
+            "id": "mixed-08",
+            "url": "https://wordwall.net/resource/8080/crossword-science",
+            "template": "Crossword",
+            "description": "Science crossword"
+        },
+        {
+            "id": "mixed-09",
+            "url": "https://wordwall.net/resource/9090/missingword-literature",
+            "template": "MissingWord",
+            "description": "Literature quotes"
+        },
+        {
+            "id": "mixed-10",
+            "url": "https://wordwall.net/resource/1001/crossword-geography",
+            "template": "Crossword",
+            "description": "Geography crossword"
+        }
+    ]
+}

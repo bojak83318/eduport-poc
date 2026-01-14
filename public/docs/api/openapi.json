@@ -1,0 +1,183 @@
+{
+    "openapi": "3.0.3",
+    "info": {
+        "title": "EduPort API",
+        "description": "Convert Wordwall activities to H5P format",
+        "version": "1.0.0",
+        "contact": {
+            "email": "api@eduport.app"
+        }
+    },
+    "servers": [
+        {
+            "url": "https://eduport.app/api",
+            "description": "Production"
+        },
+        {
+            "url": "http://localhost:3000/api",
+            "description": "Development"
+        }
+    ],
+    "paths": {
+        "/convert": {
+            "post": {
+                "summary": "Convert a Wordwall activity to H5P",
+                "description": "Converts a single Wordwall URL to H5P format. Returns download URL.",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/ConvertRequest"
+                            },
+                            "example": {
+                                "url": "https://wordwall.net/resource/12345678"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Successful conversion",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ConvertResponse"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request"
+                    },
+                    "429": {
+                        "description": "Rate limit exceeded"
+                    }
+                }
+            }
+        },
+        "/bulk": {
+            "post": {
+                "summary": "Bulk convert multiple URLs",
+                "description": "Queue multiple Wordwall URLs for conversion. Returns job ID for polling.",
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/BulkRequest"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Job created",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/BulkResponse"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized"
+                    }
+                }
+            },
+            "get": {
+                "summary": "Check bulk job status",
+                "parameters": [
+                    {
+                        "name": "jobId",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Job status"
+                    }
+                }
+            }
+        }
+    },
+    "components": {
+        "schemas": {
+            "ConvertRequest": {
+                "type": "object",
+                "required": [
+                    "url"
+                ],
+                "properties": {
+                    "url": {
+                        "type": "string",
+                        "pattern": "^https://wordwall\\.net/resource/\\d+$",
+                        "description": "Wordwall activity URL"
+                    }
+                }
+            },
+            "ConvertResponse": {
+                "type": "object",
+                "properties": {
+                    "downloadUrl": {
+                        "type": "string",
+                        "description": "URL to download the H5P file"
+                    },
+                    "template": {
+                        "type": "string",
+                        "description": "Detected Wordwall template type"
+                    }
+                }
+            },
+            "BulkRequest": {
+                "type": "object",
+                "required": [
+                    "urls"
+                ],
+                "properties": {
+                    "urls": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "maxItems": 1000
+                    },
+                    "webhookUrl": {
+                        "type": "string",
+                        "description": "Optional webhook for completion notification"
+                    }
+                }
+            },
+            "BulkResponse": {
+                "type": "object",
+                "properties": {
+                    "jobId": {
+                        "type": "string"
+                    },
+                    "status": {
+                        "type": "string"
+                    },
+                    "urlCount": {
+                        "type": "integer"
+                    }
+                }
+            }
+        },
+        "securitySchemes": {
+            "BearerAuth": {
+                "type": "http",
+                "scheme": "bearer"
+            }
+        }
+    }
+}

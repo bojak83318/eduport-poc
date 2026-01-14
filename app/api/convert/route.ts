@@ -1,97 +1,130 @@
-import { NextResponse } from 'next/server';
-import AdmZip from 'adm-zip';
-import { createClient } from '@supabase/supabase-js';
+import { NextRequest, NextResponse } from 'next/server';
+import { WordwallScraper } from '@/lib/scraping/wordwall-scraper';
+import { H5PPackager } from '@/lib/packaging/h5p-packager';
+import { getAdapter } from '@/lib/transformation/adapter-factory';
+import pino from 'pino';
+import { checkRateLimit, checkMonthlyQuota } from '@/lib/ratelimit';
+import { createClient } from '@/lib/supabase/server';
 
-// Initialize Supabase (Env vars from Vercel)
-const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+const logger = pino({ name: 'convert-api' });
 
-export async function POST(request: Request) {
+export async function POST(req: NextRequest) {
+    const startTime = Date.now();
+    let supabaseUser = null;
+
     try {
-        const { url } = await request.json();
+        // 0. Rate Limiting & Quota Check
+        const supabase = await createClient();
+        const { data: { user } } = await supabase.auth.getUser();
+        supabaseUser = user;
 
-        // 1. RECONNAISSANCE: Fetch Wordwall HTML
-        const response = await fetch(url, {
-            headers: { 'User-Agent': 'Mozilla/5.0 (EduPort POC)' }
-        });
-        const html = await response.text();
+        const ip = req.headers.get('x-forwarded-for') || 'unknown';
+        const identifier = user ? user.id : ip;
 
-        // 2. EXTRACTION: Regex Pattern Matching (Ported from TDD)
-        // Looking for: window.activityModel = { ... };
-        const regex = /window\.activityModel\s*=\s*(\{.*?\});/s;
-        const match = html.match(regex);
+        // Determine tier. Default to 'free' if logged in, 'anon' otherwise.
+        const tier = (user?.app_metadata?.tier || user?.user_metadata?.tier || (user ? 'free' : 'anon')) as 'anon' | 'free' | 'pro' | 'enterprise';
 
-        if (!match) {
-            return NextResponse.json({
-                error: "POC Limitation: This game format is not supported. The current version only supports older Wordwall templates that use the legacy 'activityModel' structure. Newer games use dynamic content loading which requires additional API integration.",
-                details: "Try searching for 'Match up' or 'Quiz' templates from 2022 or earlier."
-            }, { status: 400 });
+        // 1. Check Rate Limit (Frequency)
+        const rateLimit = await checkRateLimit(identifier, tier);
+
+        if (!rateLimit.success) {
+            return NextResponse.json(
+                { error: 'Rate limit exceeded. Upgrade to Pro for higher limits.' },
+                { status: 429, headers: rateLimit.headers as any }
+            );
         }
 
-        const activityModel = JSON.parse(match[1]);
-        console.log(`Extracted Activity: ${activityModel.title}`);
+        // 2. Check Monthly Quota (Free Tier only)
+        if (tier === 'free' && user) {
+            const withinQuota = await checkMonthlyQuota(user.id);
+            if (!withinQuota) {
+                return NextResponse.json(
+                    { error: 'Monthly limit exceeded. Upgrade to Pro for unlimited conversions.' },
+                    { status: 429 }
+                );
+            }
+        }
 
-        // 3. TRANSFORMATION: Map to H5P (Match-Up Example)
-        const h5pContent = {
-            cards: activityModel.content.items.map((item: any, index: number) => ({
-                image: null,
-                match: {
-                    library: "H5P.Text 1.1",
-                    params: { content: item.question }
-                },
-                matchAlt: {
-                    library: "H5P.Text 1.1",
-                    params: { content: item.answers[0].text }
-                }
-            })),
-            behaviour: { useGrid: true, allowRetry: true }
-        };
+        // 3. Parse request
+        const { wordwallUrl, attestOwnership, userId } = await req.json();
 
-        const h5pMetadata = {
-            title: activityModel.title,
-            language: "en",
-            mainLibrary: "H5P.MemoryGame",
-            preloadedDependencies: [
-                { machineName: "H5P.MemoryGame", majorVersion: 1, minorVersion: 3 },
-                { machineName: "H5P.Text", majorVersion: 1, minorVersion: 1 }
-            ]
-        };
+        // Validate attestation
+        if (!attestOwnership) {
+            return NextResponse.json(
+                { error: 'You must attest that you own the rights to this content' },
+                { status: 400 }
+            );
+        }
 
-        // 4. PACKAGING: Create the .h5p ZIP
-        const zip = new AdmZip();
-        zip.addFile("h5p.json", Buffer.from(JSON.stringify(h5pMetadata)));
-        zip.addFile("content/content.json", Buffer.from(JSON.stringify(h5pContent)));
+        // 4. Scrape Wordwall activity
+        logger.info({ wordwallUrl, userId: user?.id || userId || 'anon' }, 'Starting conversion');
+        const scraper = new WordwallScraper();
+        const activity = await scraper.scrape(wordwallUrl);
 
-        const h5pBuffer = zip.toBuffer();
+        // 5. Transform to H5P
+        const adapter = getAdapter(activity.template);
+        const h5pData = adapter.convert(activity);
 
-        // 5. DELIVERY: Upload to Supabase Storage
-        const fileName = `conversion_${Date.now()}.h5p`;
-        const { data, error } = await supabase
-            .storage
-            .from('h5p-files')
-            .upload(fileName, h5pBuffer, {
-                contentType: 'application/zip'
-            });
+        // 6. Package as .h5p file
+        const packager = new H5PPackager();
+        const { buffer, packageUrl } = await packager.createPackage(
+            h5pData,
+            activity.id,
+            user?.id || userId || 'anon'
+        );
 
-        if (error) throw error;
+        // Record conversion for quota tracking
+        if (user) {
+            const { error: insertError } = await supabase
+                .from('conversions')
+                .insert({
+                    user_id: user.id,
+                    source_url: wordwallUrl,
+                    template_type: activity.template,
+                    status: 'success', // Using simple status
+                });
 
-        // Get Public URL
-        const { data: { publicUrl } } = supabase
-            .storage
-            .from('h5p-files')
-            .getPublicUrl(fileName);
+            if (insertError) {
+                logger.error({ error: insertError }, 'Failed to record conversion');
+            }
+        }
 
-        // 6. AUDIT: Log to DB
-        await supabase.from('conversions').insert({
-            wordwall_url: url,
-            download_url: publicUrl
+        const latencyMs = Date.now() - startTime;
+        logger.info(
+            {
+                wordwallUrl,
+                template: activity.template,
+                latencyMs,
+                sizeKB: Math.round(buffer.length / 1024),
+            },
+            'Conversion successful'
+        );
+
+        // 7. Return .h5p file as downloadable response
+        const responseBuffer = new Uint8Array(buffer);
+
+        return new NextResponse(responseBuffer, {
+            headers: {
+                'Content-Type': 'application/h5p',
+                'Content-Disposition': `attachment; filename="wordwall-${activity.id}.h5p"`,
+                'X-Conversion-Time-Ms': latencyMs.toString(),
+                'X-Template-Type': activity.template,
+            },
         });
+    } catch (error) {
+        const latencyMs = Date.now() - startTime;
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
 
-        return NextResponse.json({ success: true, downloadUrl: publicUrl });
+        logger.error({ error: errorMessage, latencyMs }, 'Conversion failed');
 
-    } catch (err: any) {
-        return NextResponse.json({ error: err.message }, { status: 500 });
+        const statusCode = errorMessage.includes('Unsupported template') ? 422 : 500;
+
+        return NextResponse.json(
+            {
+                error: errorMessage,
+                latencyMs,
+            },
+            { status: statusCode }
+        );
     }
 }
